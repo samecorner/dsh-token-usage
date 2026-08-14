@@ -1,17 +1,20 @@
 # dsh-token-usage
 
-DSH（DeepSeek Harness）Web GUI 的 **Token 用量分析插件**：在会话顶部的 Tab 栏（Chat / Trajectory 之后）新增一个「Token 用量」页，展示整轮对话的 token 明细与上下文占用。
+[![npm version](https://img.shields.io/npm/v/@samecorner/dsh-client-ui-token-usage)](https://www.npmjs.com/package/@samecorner/dsh-client-ui-token-usage)
+[![License](https://img.shields.io/npm/l/@samecorner/dsh-client-ui-token-usage)](https://github.com/samecorner/dsh-token-usage/blob/main/LICENSE)
+
+DSH（DeepSeek Harness）Web GUI 的 **Token 用量分析插件**：在会话顶部的 Tab 栏（Chat / Trajectory 之后）新增一个「Token 用量」页，展示整轮对话的 token 明细与上下文占用。发布在 npm：`@samecorner/dsh-client-ui-token-usage`。
 
 灵感来自 pi-web-token-usage（pi-web 的同类插件），但完全按 DSH 的插件契约实现：
 
 | 能力 | 数据来源 |
 |---|---|
-| 总 token / 计费 token / 输出 / 缓存读取 KPI | host 端 tokenUsage projection（token-meter 已内置在 dsh web） |
-| 上下文占用 %（projected / window） | host 端 contextPressure projection |
-| 轮次 / 步数 | host 端 sessionStats projection |
-| 构成明细表（输入/缓存读/缓存写/输出/推理） | 上述 tokenUsage |
-| 按模型拆分 + 逐轮明细 + 堆叠条形图 | 客户端从会话事件窗口折叠 assistant/message 的 usage（ConversationNode + View target） |
-| 复制 Markdown 报告 / 加载更早记录 | 面板按钮 |
+| 总 token / 计费 token / 输出 / 缓存读取 KPI（数字滚动动画） | host 端 tokenUsage projection（token-meter 已内置在 dsh web） |
+| 上下文占用进度条（≥80% 警告变色） | host 端 contextPressure projection |
+| 轮次 / 步数 / 推理 token | host 端 sessionStats projection + 窗口快照 |
+| 构成环形图 + 明细表（输入/缓存读/缓存写/输出/推理，占比微条） | 上述 tokenUsage |
+| 逐轮堆叠柱状图（hover tooltip）+ 累计计费曲线 | 客户端从会话事件窗口折叠 assistant/message 的 usage（ConversationNode + View target） |
+| 按模型拆分 + 复制 Markdown 报告 + 加载更早记录 | 模型路由聚合 / 面板按钮 |
 
 ## 安装
 
@@ -27,30 +30,30 @@ dsh plugin --profile web add @samecorner/dsh-client-ui-token-usage
 
 该包声明了 `dsh.bundle.patch`（见 `bundle.patch.yml`），`dsh plugin add` 后**自动挂载**：包会被加进 profile 的 bundle 层，无需手动改 `cordis.patch.yml`。若之前在 `cordis.patch.yml` 里手动 insert 过同 id，请删除该条目，避免重复挂载报错。
 
-更新：`dsh plugin --profile web update @samecorner/dsh-client-ui-token-usage`；卸载：`dsh plugin --profile web remove @samecorner/dsh-client-ui-token-usage`（层列表自动摘除）。
+更新：`dsh plugin --profile web update @samecorner/dsh-client-ui-token-usage`
+卸载：`dsh plugin --profile web remove @samecorner/dsh-client-ui-token-usage`（依赖与层列表自动一并摘除）
 
-### 方式 B：源码构建 + 本地安装（开发用）
+### 方式 B：源码构建 + 本地开发安装
 
 ```bash
 # 1. 构建（需要 node >= 18；依赖只来自 npm 公开包，不需要 DSH 源码）
 npm install
 npm run build        # 产出 lib/client.js + lib/index.js
 
-# 2. 以 file: 依赖挂进 profile package.json（或 symlink 到 profile node_modules）
-#    "dependencies": { "@samecorner/dsh-client-ui-token-usage": "file:/path/to/dsh-token-usage" }
-#    然后 pnpm install（file: 是拷贝语义 — 改代码后需重新 build 并同步，见开发手册 §8）
+# 2. 以本地目录安装进 profile（同样走 dsh plugin，自动挂载）
+dsh plugin --profile web add /path/to/dsh-token-usage
+# 目录依赖是链接语义：改代码 npm run build 后重启 web 即生效，无需拷贝/同步
 
-# 3. 同上 cordis.patch.yml；4. 重启 dsh web
+# 3. 重启 dsh web
 ```
-
-重启后打开任意会话，顶部 Tab 出现「Token 用量」。
 
 ## 开发
 
 ```bash
 npm run typecheck    # tsc --noEmit（类型来自 npm 上的 @deepseek-ai/*@0.1.0-rc.6）
 npm run build        # esbuild：浏览器 bundle + node half
-node scripts/smoke-loader.mjs   # 模拟 DSH 模块表验证产物形态（不启动 web）
+npm run test         # 冒烟：loader 形态 + SSR 渲染（不启动 web）
+node scripts/smoke-loader.mjs       # 模拟 DSH 模块表验证产物形态
 node scripts/render-test.mjs && node scripts/.tmp/render-test.bundle.mjs  # SSR 渲染冒烟（抓运行时错误）
 ```
 
@@ -69,20 +72,27 @@ dsh-token-usage/
 │       ├── token-usage-contract.ts # 视图数据类型 + ConversationViewSnapshotMap 合并
 │       ├── token-usage-step-definition.ts  # assistant/message → usage 节点（last-wins）
 │       ├── token-usage-snapshot-builder.ts # 折叠成逐轮明细 + 总计
-│       ├── TokenUsageView.tsx      # 面板组件
-│       ├── styles.ts               # 自包含样式（免 CSS modules 管线）
+│       ├── TokenUsageView.tsx      # 面板组件（KPI/环形图/柱状图/曲线）
+│       ├── styles.ts               # 自包含样式（--dsw-alias-* 主题变量驱动）
 │       └── locales.ts              # 中/英文案
 ├── build.mjs                       # esbuild 打包（匹配 DSH client bundle 格式）
+├── bundle.patch.yml                # dsh plugin add 自动挂载层（dsh.bundle.patch）
 └── package.json
 ```
 
-## GitHub 仓库注意事项
+## 发布与分享
 
-- 包名 `@samecorner/dsh-client-ui-token-usage`；Loader 不挑 scope，若 fork 改名需同步
-  package.json name + build.mjs 里的 ID + styles.ts 的 data-plugin 归属标记。
+- **仓库**：https://github.com/samecorner/dsh-token-usage（已关联官方 `dsh-plugin` topic，见
+  https://github.com/topics/dsh-plugin）
+- **npm**：`@samecorner/dsh-client-ui-token-usage`。发版流程：
+
+  ```bash
+  npm run test && npm version patch && npm publish
+  # 使用方：dsh plugin --profile web update @samecorner/dsh-client-ui-token-usage
+  ```
+
 - 依赖只有 devDependencies（类型 + 构建工具），运行时零依赖（只 external 平台模块）。
-- 版本号建议发版时改成与目标 DSH release 线一致的 rc 版本。
-- 发布：`npm run test && npm publish`（prepack 会自动构建 lib/）。
+- 若 fork 改名需同步：package.json name + build.mjs 里的 ID + styles.ts 的 data-plugin 归属标记 + bundle.patch.yml 的 name。
 
 ## 工作原理（DSH 插件机制速记）
 

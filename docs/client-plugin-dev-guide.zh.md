@@ -61,7 +61,7 @@ host loader 只负责把 node half 挂起来；`client-modules` 服务扫描到 
 
 | 参考 | 路径 | 说明 |
 |---|---|---|
-| Token 用量分析 Tab（本仓库本体） | 同仓库 `src/`、`build.mjs`、`scripts/` | 不 fork 仓库、以 esbuild 独立构建、经 profile `file:` 依赖安装的完整实战；§6/§8 的坑都来自它 |
+| Token 用量分析 Tab（本仓库本体） | 同仓库 `src/`、`build.mjs`、`scripts/` | 不 fork 仓库、以 esbuild 独立构建、经 `dsh plugin add` 目录/npm 安装的完整实战；§6/§8 的坑都来自它 |
 
 ### 2.3 快速定位清单（写代码时对照）
 
@@ -291,30 +291,32 @@ console.log('SMOKE TEST PASSED')   // 然后在浏览器里再验 UI
 
 ## 8. 安装与启用（运行中的 dsh web / profile）
 
+**官方安装命令 `dsh plugin`（推荐，在哪里执行都可以，首次自动初始化 profile）：**
+
 ```bash
 # 1) 构建
 npm install && npm run build
 
-# 2) 装进 profile（二选一）
-#   A. file: 依赖（pnpm，拷贝语义）——profile package.json 里加：
-#      "dependencies": { "@deepseek-ai/dsh-client-ui-my-plugin": "file:/path/to/plugin" }
-#      然后 pnpm install（在 profile 目录）
-#   B. 直接 symlink：
-#      mkdir -p ~/.dsh/profiles/<profile>/node_modules/@deepseek-ai
-#      ln -sfn /path/to/plugin ~/.dsh/profiles/<profile>/node_modules/@deepseek-ai/dsh-client-ui-my-plugin
+# 2) 装进 profile（二选一，都会自动加入 bundle 层并应用其 patch）
+dsh plugin --profile <profile> add @my-scope/dsh-client-ui-my-plugin   # npm 包
+# 或本地目录：
+dsh plugin --profile <profile> add /abs/path/to/plugin                # 目录 = link 语义
 
-# 3) 挂进启动图：~/.dsh/profiles/<profile>/cordis.patch.yml 追加：
+# 3) 若包声明了 dsh.bundle.patch（bundle.patch.yml，内容为 insert 列表）则已自动挂载，
+#    无需手改配置；未声明的包需在 cordis.patch.yml 追加：
 #    - insert:
 #        - id: my-plugin
-#          name: '@deepseek-ai/dsh-client-ui-my-plugin'
+#          name: '@my-scope/dsh-client-ui-my-plugin'
 
 # 4) 重启 dsh web（launcher 停止再启动，或 kill 后重跑）
 ```
 
-- **`file:` 依赖是拷贝，不是链接**：改了源码必须 `npm run build` 后把 `lib/` 同步到 profile 的拷贝（或重跑 pnpm install）。校验是否同步：
+- **目录依赖 = pnpm link 语义**（`link:/path/to/plugin`）：改源码 `npm run build` 后重启即生效，无需拷贝/同步（这是开发期最快的迭代环）。
+- **更新**：`dsh plugin --profile <p> update <pkg>`；**卸载**：`dsh plugin --profile <p> remove <pkg>`（依赖与层列表一并摘除，官方教程原文见 `docs/user/develop/basic/publish.zh.md`）。
+- **旧式手工安装（file: 拷贝）仅作参考**：profile package.json 写 `file:` 依赖再 `pnpm install`；`file:` 是**拷贝语义**——改了源码必须 `npm run build` 后把 `lib/` 同步到 profile 的拷贝（或重跑 pnpm install）。校验是否同步：
 
   ```bash
-  src=/path/to/plugin/lib; dst=~/.dsh/profiles/<p>/node_modules/@deepseek-ai/dsh-client-ui-my-plugin/lib
+  src=/path/to/plugin/lib; dst=~/.dsh/profiles/<p>/node_modules/@my-scope/dsh-client-ui-my-plugin/lib
   for f in client.js client.js.map index.js; do
     [ "$(sha256sum $src/$f | cut -d' ' -f1)" = "$(sha256sum $dst/$f | cut -d' ' -f1)" ] \
       && echo "$f: 一致" || echo "$f: 不一致（需要同步）"
@@ -323,7 +325,7 @@ npm install && npm run build
 
 - **缓存**：bundle URL 带 `?rev=<内容hash>`，bundle 一变 rev 就变、浏览器自动失效；万一首屏还是旧错误状态，硬刷新一次即可，无需清站点数据。
 - **HMR**：dev 环境（仓库内开发图）webserver stat-poll bundle 并广播 `rebuilt` SSE，`client-hmr` 插件逐 fiber 热换；profile 生产方式重启最省事。
-- **改动生效链路**：改源码 → build → 同步 profile → 重启 web（或等 HMR）。
+- **改动生效链路**：改源码 → build → 重启 web（目录/link 安装无需同步；file: 安装需先同步）。
 
 ---
 
@@ -338,7 +340,7 @@ npm install && npm run build
 | 5 | **`dsh.client` 声明缺失 / platform 写错** | 包被当普通包，浏览器端没有任何表现，也没有报错 | 对照 §4 JSON 逐字段 |
 | 6 | **`exports["./client"]` 缺失** | host 组合期：`client bundle not found`（并提示先 build） | package.json exports 加上 `./client` |
 | 7 | **client `inject` 服务名写错**（如 `conversationView` 少了 s） | box 停在 boot 页；audit 报 `pending (waiting for service: …)` | 服务名以官方源码 `inject` 数组为准：`slots` `conversationEvents` `conversationViews` `sessions` `locale` |
-| 8 | **`file:` 依赖拷贝不同步** | 改了代码重启没效果；或 profile 里是旧 bundle 继续报错 | §8 的 sha256 一致性校验 |
+| 8 | **`file:` 依赖拷贝不同步** | 改了代码重启没效果；或 profile 里是旧 bundle 继续报错 | 换用 `dsh plugin add <目录>`（link 语义）开发；仍用 file: 则做 §8 的 sha256 一致性校验 |
 | 9 | **忘了 node half / node half 没 `apply`** | host loader import 失败：`failed to import loader entry`（import 阶段，非物化阶段） | `src/index.ts` 保留 `export function apply(): void {}` |
 | 10 | **`label` 传字符串不传函数** | Tab 文案不跟随语言切换 | `label: () => t('view.xxx')` |
 | 11 | 产物里 `"use strict"` 不再是指令序言（module 声明在它前面） | 无；sloppy 模式同样执行 | 可忽略，官方 intro 同样插在代码前 |
