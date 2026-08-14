@@ -61,7 +61,7 @@ host loader 只负责把 node half 挂起来；`client-modules` 服务扫描到 
 
 | 参考 | 路径 | 说明 |
 |---|---|---|
-| Token 用量分析 Tab | `/home/ubuntu/ws_ds/dsh-token-usage` | 不 fork 仓库、以 esbuild 独立构建、经 profile `file:` 依赖安装的完整实战；§6/§8 的坑都来自它 |
+| Token 用量分析 Tab（本仓库本体） | 同仓库 `src/`、`build.mjs`、`scripts/` | 不 fork 仓库、以 esbuild 独立构建、经 profile `file:` 依赖安装的完整实战；§6/§8 的坑都来自它 |
 
 ### 2.3 快速定位清单（写代码时对照）
 
