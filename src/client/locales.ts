@@ -26,6 +26,14 @@ export type TokenUsageKey =
   | 'kpi.avgCallSub'
   | 'kpi.peakCall'
   | 'kpi.peakCallSub'
+  | 'kpi.ttft'
+  | 'kpi.ttftSub'
+  | 'kpi.outputRate'
+  | 'kpi.outputRateSub'
+  | 'kpi.llmTime'
+  | 'kpi.toolTime'
+  | 'kpi.samples'
+  | 'kpi.providerReported'
   | 'kpi.reasoning'
   | 'kpi.turns'
   | 'kpi.steps'
@@ -96,6 +104,14 @@ export const zh: Record<TokenUsageKey, string> = {
   'kpi.avgCallSub': '计费口径',
   'kpi.peakCall': '峰值单次调用',
   'kpi.peakCallSub': '窗口内最大',
+  'kpi.ttft': '首 token 延迟',
+  'kpi.ttftSub': '模型响应速度',
+  'kpi.outputRate': '输出速率',
+  'kpi.outputRateSub': '解码阶段',
+  'kpi.llmTime': '模型耗时',
+  'kpi.toolTime': '工具耗时',
+  'kpi.samples': '次采样',
+  'kpi.providerReported': 'provider 上报',
   'kpi.reasoning': '推理 token',
   'kpi.turns': '轮次',
   'kpi.steps': '步数',
@@ -160,6 +176,14 @@ export const en: Record<TokenUsageKey, string> = {
   'kpi.avgCallSub': 'billed base',
   'kpi.peakCall': 'Peak call',
   'kpi.peakCallSub': 'largest in window',
+  'kpi.ttft': 'First token latency',
+  'kpi.ttftSub': 'model responsiveness',
+  'kpi.outputRate': 'Output rate',
+  'kpi.outputRateSub': 'decode span',
+  'kpi.llmTime': 'Model time',
+  'kpi.toolTime': 'Tool time',
+  'kpi.samples': 'samples',
+  'kpi.providerReported': 'provider reported',
   'kpi.reasoning': 'Reasoning tokens',
   'kpi.turns': 'Turns',
   'kpi.steps': 'Steps',

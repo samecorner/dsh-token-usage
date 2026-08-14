@@ -51,7 +51,7 @@ const props = {
       ? { projectedTokens: 42000, contextWindow: 64000, pressureTokens: 39000 }
       : name === 'contextBreakdown'
         ? { systemTokens: 8000, toolsTokens: 12000, messageTokens: 28000 }
-        : { turns: 3, steps: 5 },
+        : { turns: 3, steps: 5, llmMs: 45000, toolMs: 12000, ttftMs: 2400, ttftSteps: 4, decodeMs: 28000, decodeTokens: 730 },
   loadOlder: async () => false,
   t: (k) => String(k),
 }
@@ -71,6 +71,10 @@ const checks = [
   ['composition legend', html.includes('tu-composition-legend')],
   ['model cache hit col', html.includes('kpi.cacheHitRateSub') || html.includes('models.cacheHit')],
   ['turn duration col', html.includes('tu-num') && html.includes('turns.duration')],
+  ['ttft kpi', html.includes('kpi.ttft') && html.includes('600ms')],
+  ['output rate kpi', html.includes('kpi.outputRate') && html.includes('tok/s')],
+  ['model/tool time kpis', html.includes('kpi.llmTime') && html.includes('kpi.toolTime')],
+  ['provider reported span', html.includes('kpi.providerReported')],
 ]
 for (const [name, ok] of checks) {
   console.log(ok ? 'PASS ' + name : 'FAIL ' + name)

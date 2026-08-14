@@ -56,6 +56,15 @@ function formatDuration(span: number): string {
   return `${Math.floor(seconds / 60)}m${seconds % 60}s`
 }
 
+/** Format a plain millisecond span (sessionStats fields are ms totals). */
+function formatMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return '—'
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  const seconds = ms / 1000
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  return `${Math.floor(seconds / 60)}m${Math.round(seconds % 60)}s`
+}
+
 /* ------------------------------------------------------------------ */
 /* Count-up hook: animates a number toward its target with an ease-out  */
 /* curve. Honors prefers-reduced-motion (jumps straight to the target). */
@@ -120,11 +129,12 @@ function KpiCard({
 
 /** Context-window occupancy meter inside a wide KPI card. */
 function OccupancyKpi({
-  percent, detail, warn, t,
+  percent, detail, warn, pressureToken, t,
 }: {
   readonly percent: number | undefined
   readonly detail: string | undefined
   readonly warn: boolean
+  readonly pressureToken: number | undefined
   readonly t: PropsLocale<'token-usage'>['t']
 }) {
   const width = percent === undefined ? 0 : Math.min(100, Math.max(0, percent))
@@ -143,6 +153,11 @@ function OccupancyKpi({
         <div className={styles.meterRow}>
           <span>{percent === undefined ? '—' : formatTokens(Math.round(percent))}%</span>
           <span>{t('kpi.occupancySub')}</span>
+          {pressureToken !== undefined && (
+            <span className={styles.meterReported}>
+              {t('kpi.providerReported')} {formatTokens(pressureToken)}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -636,6 +651,18 @@ export function TokenUsageView({
     ? `${formatTokens(pressure.projectedTokens)} / ${pressure.contextWindow === undefined ? '—' : formatTokens(pressure.contextWindow)}`
     : undefined
 
+  // Whole-log wall-time statistics from the sessionStats projection (all
+  // host-counted, no client estimation): first-token latency, output rate,
+  // and the model/tool time split.
+  const ttft = stats !== undefined && stats.ttftSteps > 0
+    ? formatMs(stats.ttftMs / stats.ttftSteps)
+    : '—'
+  const outputRate = stats !== undefined && stats.decodeMs > 0
+    ? `${(stats.decodeTokens / (stats.decodeMs / 1000)).toFixed(1)} tok/s`
+    : '—'
+  const llmTime = stats === undefined ? '—' : formatMs(stats.llmMs)
+  const toolTime = stats === undefined ? '—' : formatMs(stats.toolMs)
+
   const copyReport = async (): Promise<void> => {
     await navigator.clipboard.writeText(markdownOf(snapshot, t('kpi.billed')))
     setCopied(true)
@@ -684,7 +711,7 @@ export function TokenUsageView({
           </div>
 
           <div className={styles.kpis}>
-            <OccupancyKpi percent={rawPercent} detail={occupancyDetail} warn={warn} t={t} />
+            <OccupancyKpi percent={rawPercent} detail={occupancyDetail} warn={warn} pressureToken={pressure?.pressureTokens} t={t} />
             <KpiCard
               label={t('kpi.cacheHitRate')}
               value={hitRate === undefined ? t('kpi.unknown') : `${hitRate.toFixed(1)}%`}
@@ -705,6 +732,13 @@ export function TokenUsageView({
             <KpiCard label={t('kpi.peakCall')} value={callStats.peak === undefined ? '—' : callStats.peak} sub={t('kpi.peakCallSub')} kind="output" t={t} />
             <KpiCard label={t('kpi.turns')} value={stats === undefined ? '—' : stats.turns} t={t} />
             <KpiCard label={t('kpi.steps')} value={stats === undefined ? '—' : stats.steps} t={t} />
+          </div>
+
+          <div className={styles.kpis}>
+            <KpiCard label={t('kpi.ttft')} value={ttft} sub={`${stats?.ttftSteps ?? 0} ${t('kpi.samples')}`} kind="accent" t={t} />
+            <KpiCard label={t('kpi.outputRate')} value={outputRate} sub={t('kpi.outputRateSub')} kind="output" t={t} />
+            <KpiCard label={t('kpi.llmTime')} value={llmTime} sub={t('kpi.ttftSub')} t={t} />
+            <KpiCard label={t('kpi.toolTime')} value={toolTime} t={t} />
           </div>
 
           <section className={styles.section}>

@@ -35,6 +35,7 @@ export const styles = {
   meter: 'tu-meter',
   meterWarn: 'tu-meter-warn',
   meterRow: 'tu-meter-row',
+  meterReported: 'tu-meter-reported',
   summary: 'tu-summary',
   section: 'tu-section',
   sectionTitle: 'tu-section-title',
@@ -183,6 +184,7 @@ const CSS = `
 }
 .tu-meter-warn > span { background: linear-gradient(90deg, var(--tu-cache-write), var(--tu-reasoning)); }
 .tu-meter-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--tu-text-dim); font-variant-numeric: tabular-nums; }
+.tu-meter-reported { color: var(--tu-text-muted); }
 
 /* ---------------- summary strip (turns · steps · reasoning) ---------------- */
 
