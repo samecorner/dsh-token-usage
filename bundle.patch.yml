@@ -1,0 +1,7 @@
+# Auto-mount layer: declared via package.json `dsh.bundle.patch`, so
+# `dsh plugin --profile <name> add @samecorner/dsh-client-ui-token-usage`
+# reconciles this package into the profile's bundle layer stack and mounts
+# the view tab with no manual cordis.patch.yml edit.
+- insert:
+    - id: ui-token-usage
+      name: '@samecorner/dsh-client-ui-token-usage'

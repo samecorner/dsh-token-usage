@@ -15,21 +15,19 @@ DSH（DeepSeek Harness）Web GUI 的 **Token 用量分析插件**：在会话顶
 
 ## 安装
 
-### 方式 A：npm 安装（推荐，免编译）
+### 方式 A：npm 一键安装（推荐，免编译、免改配置）
 
 ```bash
-# 1. profile package.json 加依赖并安装（在 ~/.dsh/profiles/web/ 下）
-pnpm add @samecorner/dsh-client-ui-token-usage
+# 在哪里执行都可以，dsh 会自动到对应的 profile 目录里跑 pnpm
+# （首次使用会自动初始化 profile）
+dsh plugin --profile web add @samecorner/dsh-client-ui-token-usage
 
-# 2. 在 ~/.dsh/profiles/web/cordis.patch.yml 追加：
-#    - insert:
-#        - id: ui-token-usage
-#          name: '@samecorner/dsh-client-ui-token-usage'
-
-# 3. 重启 dsh web
+# 重启 dsh web，顶部即出现「Token 用量」Tab
 ```
 
-更新版本：`pnpm add @samecorner/dsh-client-ui-token-usage@latest`（或改 `package.json` 里的版本号再 `pnpm install`）。
+该包声明了 `dsh.bundle.patch`（见 `bundle.patch.yml`），`dsh plugin add` 后**自动挂载**：包会被加进 profile 的 bundle 层，无需手动改 `cordis.patch.yml`。若之前在 `cordis.patch.yml` 里手动 insert 过同 id，请删除该条目，避免重复挂载报错。
+
+更新：`dsh plugin --profile web update @samecorner/dsh-client-ui-token-usage`；卸载：`dsh plugin --profile web remove @samecorner/dsh-client-ui-token-usage`（层列表自动摘除）。
 
 ### 方式 B：源码构建 + 本地安装（开发用）
 

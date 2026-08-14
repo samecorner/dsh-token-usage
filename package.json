@@ -1,7 +1,7 @@
 {
   "name": "@samecorner/dsh-client-ui-token-usage",
   "description": "Token usage analytics tab for the dsh web GUI: whole-log projections plus a per-turn/per-step breakdown",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
@@ -15,6 +15,9 @@
     "./package.json": "./package.json"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./bundle.patch.yml"
+    },
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-locale",
@@ -27,6 +30,7 @@
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "bundle.patch.yml",
     "README.md"
   ],
   "publishConfig": {
