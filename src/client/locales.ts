@@ -18,10 +18,25 @@ export type TokenUsageKey =
   | 'kpi.cacheReadSub'
   | 'kpi.occupancy'
   | 'kpi.occupancySub'
+  | 'kpi.cacheHitRate'
+  | 'kpi.cacheHitRateSub'
+  | 'kpi.reasoningShare'
+  | 'kpi.reasoningShareSub'
+  | 'kpi.avgCall'
+  | 'kpi.avgCallSub'
+  | 'kpi.peakCall'
+  | 'kpi.peakCallSub'
   | 'kpi.reasoning'
   | 'kpi.turns'
   | 'kpi.steps'
   | 'kpi.unknown'
+  | 'composition.title'
+  | 'composition.note'
+  | 'composition.total'
+  | 'composition.system'
+  | 'composition.tools'
+  | 'composition.messages'
+  | 'turns.duration'
   | 'breakdown.title'
   | 'breakdown.bucket'
   | 'breakdown.tokens'
@@ -36,6 +51,7 @@ export type TokenUsageKey =
   | 'models.name'
   | 'models.tokens'
   | 'models.calls'
+  | 'models.cacheHit'
   | 'turns.title'
   | 'chart.turns'
   | 'chart.turnsNote'
@@ -72,10 +88,25 @@ export const zh: Record<TokenUsageKey, string> = {
   'kpi.cacheReadSub': '命中提示缓存',
   'kpi.occupancy': '上下文占用',
   'kpi.occupancySub': '已用 / 窗口',
+  'kpi.cacheHitRate': '提示缓存命中率',
+  'kpi.cacheHitRateSub': '命中 / 输入总量',
+  'kpi.reasoningShare': '推理占比',
+  'kpi.reasoningShareSub': '推理 / 输出',
+  'kpi.avgCall': '平均单次调用',
+  'kpi.avgCallSub': '计费口径',
+  'kpi.peakCall': '峰值单次调用',
+  'kpi.peakCallSub': '窗口内最大',
   'kpi.reasoning': '推理 token',
   'kpi.turns': '轮次',
   'kpi.steps': '步数',
   'kpi.unknown': '未知',
+  'composition.title': '上下文构成',
+  'composition.note': '下一次请求的组成（估算）',
+  'composition.total': '估算合计',
+  'composition.system': '系统提示',
+  'composition.tools': '工具 schema',
+  'composition.messages': '对话内容',
+  'turns.duration': '耗时',
   'breakdown.title': '构成明细',
   'breakdown.bucket': '分项',
   'breakdown.tokens': 'token 数',
@@ -90,6 +121,7 @@ export const zh: Record<TokenUsageKey, string> = {
   'models.name': '模型',
   'models.tokens': '计费 token',
   'models.calls': '调用次数',
+  'models.cacheHit': '缓存命中',
   'turns.title': '逐轮明细',
   'chart.turns': '每轮用量',
   'chart.turnsNote': '悬停查看明细',
@@ -120,10 +152,25 @@ export const en: Record<TokenUsageKey, string> = {
   'kpi.cacheReadSub': 'prompt cache hits',
   'kpi.occupancy': 'Context occupancy',
   'kpi.occupancySub': 'used / window',
+  'kpi.cacheHitRate': 'Prompt cache hit rate',
+  'kpi.cacheHitRateSub': 'hits / total input',
+  'kpi.reasoningShare': 'Reasoning share',
+  'kpi.reasoningShareSub': 'reasoning / output',
+  'kpi.avgCall': 'Avg per call',
+  'kpi.avgCallSub': 'billed base',
+  'kpi.peakCall': 'Peak call',
+  'kpi.peakCallSub': 'largest in window',
   'kpi.reasoning': 'Reasoning tokens',
   'kpi.turns': 'Turns',
   'kpi.steps': 'Steps',
   'kpi.unknown': 'Unknown',
+  'composition.title': 'Context composition',
+  'composition.note': 'makeup of the next request (est.)',
+  'composition.total': 'Est. total',
+  'composition.system': 'System prompt',
+  'composition.tools': 'Tool schemas',
+  'composition.messages': 'Conversation',
+  'turns.duration': 'Duration',
   'breakdown.title': 'Breakdown',
   'breakdown.bucket': 'Bucket',
   'breakdown.tokens': 'Tokens',
@@ -138,6 +185,7 @@ export const en: Record<TokenUsageKey, string> = {
   'models.name': 'Model',
   'models.tokens': 'Billed tokens',
   'models.calls': 'Calls',
+  'models.cacheHit': 'Cache hit',
   'turns.title': 'Per turn',
   'chart.turns': 'Per-turn usage',
   'chart.turnsNote': 'hover for details',

@@ -57,6 +57,13 @@ export const styles = {
   legend: 'tu-legend',
   legendItem: 'tu-legend-item',
   legendPct: 'tu-legend-pct',
+  composition: 'tu-composition',
+  compositionBar: 'tu-composition-bar',
+  compositionSeg: 'tu-composition-seg',
+  compositionLegend: 'tu-composition-legend',
+  compositionSystem: 'tu-composition-system',
+  compositionTools: 'tu-composition-tools',
+  compositionMessages: 'tu-composition-messages',
   chartBox: 'tu-chart-box',
   chart: 'tu-chart',
   chartEmpty: 'tu-chart-empty',
@@ -124,6 +131,7 @@ const CSS = `
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .tu-button:hover:not(:disabled) { background: var(--tu-hover); color: var(--tu-text); border-color: var(--tu-border); }
+.tu-button:focus-visible { outline: 2px solid var(--tu-accent); outline-offset: 2px; }
 .tu-button:disabled { opacity: 0.45; cursor: default; }
 .tu-button-primary { color: var(--tu-accent); border-color: color-mix(in srgb, var(--tu-accent) 35%, transparent); }
 .tu-button-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--tu-accent) 10%, transparent); }
@@ -230,6 +238,21 @@ const CSS = `
   font-size: 12px; color: var(--tu-text-muted); font-variant-numeric: tabular-nums;
 }
 .tu-legend-pct { color: var(--tu-text-dim); font-size: 11px; }
+
+/* ---------------- context composition ---------------- */
+
+.tu-composition { display: grid; gap: 10px; }
+.tu-composition-bar {
+  display: flex; width: 100%; height: 14px; border-radius: 7px; overflow: hidden;
+  background: var(--tu-bg-track); border: 1px solid var(--tu-border-subtle);
+}
+.tu-composition-seg { transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+.tu-composition-bar .tu-composition-seg:first-child { border-radius: 6px 0 0 6px; }
+.tu-composition-bar .tu-composition-seg:last-child { border-radius: 0 6px 6px 0; }
+.tu-composition-system { background: var(--tu-accent); }
+.tu-composition-tools { background: var(--tu-cache-read); }
+.tu-composition-messages { background: var(--tu-output); }
+.tu-composition-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
 
 /* ---------------- charts ---------------- */
 

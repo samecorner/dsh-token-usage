@@ -10,11 +10,12 @@ DSH（DeepSeek Harness）Web GUI 的 **Token 用量分析插件**：在会话顶
 | 能力 | 数据来源 |
 |---|---|
 | 总 token / 计费 token / 输出 / 缓存读取 KPI（数字滚动动画） | host 端 tokenUsage projection（token-meter 已内置在 dsh web） |
-| 上下文占用进度条（≥80% 警告变色） | host 端 contextPressure projection |
-| 轮次 / 步数 / 推理 token | host 端 sessionStats projection + 窗口快照 |
+| 上下文占用进度条（≥80% 警告变色）、提示缓存命中率、推理占比、平均/峰值单次调用 | host 端 contextPressure / tokenUsage projection + 窗口内 step 折叠统计 |
+| 上下文构成（系统提示 / 工具 schema / 对话内容三段堆叠条，新请求组成估算） | host 端 contextBreakdown projection |
+| 轮次 / 步数 | host 端 sessionStats projection |
 | 构成环形图 + 明细表（输入/缓存读/缓存写/输出/推理，占比微条） | 上述 tokenUsage |
-| 逐轮堆叠柱状图（hover tooltip）+ 累计计费曲线 | 客户端从会话事件窗口折叠 assistant/message 的 usage（ConversationNode + View target） |
-| 按模型拆分 + 复制 Markdown 报告 + 加载更早记录 | 模型路由聚合 / 面板按钮 |
+| 逐轮堆叠柱状图（hover tooltip）+ 逐轮明细（含耗时）+ 累计计费曲线 | 客户端从会话事件窗口折叠 assistant/message 的 usage（ConversationNode + View target） |
+| 按模型拆分（token/调用数/缓存命中率）+ 复制 Markdown 报告 + 加载更早记录 | 模型路由聚合 / 面板按钮 |
 
 ## 安装
 

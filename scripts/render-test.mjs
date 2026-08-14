@@ -48,8 +48,10 @@ const props = {
   useProjection: (name) => name === 'tokenUsage'
     ? { uncachedInputTokens: 2900, outputTokens: 820, cacheReadTokens: 16000, cacheWriteTokens: 2300 }
     : name === 'contextPressure'
-      ? { projectedTokens: 42000, contextWindow: 64000 }
-      : { turns: 3, steps: 5 },
+      ? { projectedTokens: 42000, contextWindow: 64000, pressureTokens: 39000 }
+      : name === 'contextBreakdown'
+        ? { systemTokens: 8000, toolsTokens: 12000, messageTokens: 28000 }
+        : { turns: 3, steps: 5 },
   loadOlder: async () => false,
   t: (k) => String(k),
 }
@@ -62,6 +64,13 @@ const checks = [
   ['cumulative path', html.includes('tu-cost-line')],
   ['breakdown table', html.includes('tu-share')],
   ['meter', html.includes('tu-meter')],
+  ['cache hit rate kpi', html.includes('kpi.cacheHitRate')],
+  ['reasoning share kpi', html.includes('kpi.reasoningShare')],
+  ['avg/peak kpis', html.includes('kpi.avgCall') && html.includes('kpi.peakCall')],
+  ['composition bar', html.includes('tu-composition-bar')],
+  ['composition legend', html.includes('tu-composition-legend')],
+  ['model cache hit col', html.includes('kpi.cacheHitRateSub') || html.includes('models.cacheHit')],
+  ['turn duration col', html.includes('tu-num') && html.includes('turns.duration')],
 ]
 for (const [name, ok] of checks) {
   console.log(ok ? 'PASS ' + name : 'FAIL ' + name)

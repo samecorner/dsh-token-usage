@@ -1,7 +1,7 @@
 {
   "name": "@samecorner/dsh-client-ui-token-usage",
   "description": "Token usage analytics tab for the dsh web GUI: whole-log projections plus a per-turn/per-step breakdown",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",

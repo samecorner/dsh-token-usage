@@ -38,6 +38,24 @@ function shareOf(value: number, base: number): string {
   return base <= 0 ? '—' : `${((value / base) * 100).toFixed(1)}%`
 }
 
+/** Prompt-cache hit rate: cache reads over the whole prompt input (reads + writes + uncached). */
+function cacheHitRateOf(usage: UsageValue): number | undefined {
+  const inputTotal = usage.cacheReadTokens + usage.cacheWriteTokens + usage.inputTokens
+  return inputTotal <= 0 ? undefined : (usage.cacheReadTokens / inputTotal) * 100
+}
+
+/**
+ * Format a wall-clock span for the per-turn table. Event timestamps may be
+ * epoch-ms (~1.7e12) or seconds depending on the surface; the magnitude
+ * threshold picks the unit defensively.
+ */
+function formatDuration(span: number): string {
+  if (!Number.isFinite(span) || span <= 0) return '—'
+  const seconds = Math.round(span >= 1e10 ? span / 1000 : span)
+  if (seconds < 60) return `${seconds}s`
+  return `${Math.floor(seconds / 60)}m${seconds % 60}s`
+}
+
 /* ------------------------------------------------------------------ */
 /* Count-up hook: animates a number toward its target with an ease-out  */
 /* curve. Honors prefers-reduced-motion (jumps straight to the target). */
@@ -346,6 +364,68 @@ function TurnBarsChart({
 }
 
 /* ------------------------------------------------------------------ */
+/* Context composition bar (contextBreakdown projection)               */
+/* ------------------------------------------------------------------ */
+
+const COMPOSITION_SEGMENTS = [
+  { key: 'system', labelKey: 'composition.system', cls: styles.compositionSystem },
+  { key: 'tools', labelKey: 'composition.tools', cls: styles.compositionTools },
+  { key: 'messages', labelKey: 'composition.messages', cls: styles.compositionMessages },
+] as const
+
+/**
+ * Heuristic system/tools/messages composition of the next request, straight
+ * from the host contextBreakdown projection. The three figures are meter
+ * density estimates (not provider-anchored), so they are presented as
+ * composition, never as a total to bill against.
+ */
+function ContextCompositionBar({
+  breakdown, t,
+}: {
+  readonly breakdown: { readonly systemTokens: number; readonly toolsTokens: number; readonly messageTokens: number } | undefined
+  readonly t: PropsLocale<'token-usage'>['t']
+}) {
+  const values = breakdown === undefined
+    ? { system: 0, tools: 0, messages: 0 }
+    : { system: breakdown.systemTokens, tools: breakdown.toolsTokens, messages: breakdown.messageTokens }
+  const total = values.system + values.tools + values.messages
+  if (breakdown === undefined || total <= 0) {
+    return <div className={styles.chartEmpty}>{t('turns.empty')}</div>
+  }
+  const width = (value: number): string => `${(value / total) * 100}%`
+  return (
+    <div className={styles.composition}>
+      <div className={styles.compositionBar}>
+        {COMPOSITION_SEGMENTS.map(segment => (
+          <span
+            key={segment.key}
+            className={`${styles.compositionSeg} ${segment.cls}`}
+            style={{ width: width(values[segment.key as keyof typeof values]) }}
+            title={`${t(segment.labelKey as never)}: ${formatTokens(values[segment.key as keyof typeof values])}`}
+          />
+        ))}
+      </div>
+      <div className={styles.compositionLegend}>
+        {COMPOSITION_SEGMENTS.map(segment => (
+          <div key={segment.key} className={styles.legendItem}>
+            <i className={`${styles.swatch} ${segment.cls}`} />
+            <span>{t(segment.labelKey as never)}</span>
+            <span>
+              {formatTokens(values[segment.key as keyof typeof values])}
+              <span className={styles.legendPct}> · {shareOf(values[segment.key as keyof typeof values], total)}</span>
+            </span>
+          </div>
+        ))}
+        <div className={styles.legendItem}>
+          <span className={styles.muted}>{t('composition.total')}</span>
+          <span>{formatTokens(total)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Cumulative billed-tokens curve                                      */
 /* ------------------------------------------------------------------ */
 
@@ -452,6 +532,7 @@ export function TokenUsageView({
   const snapshot = useSession(s => s.views.get('tokenUsage') ?? EMPTY_TOKEN_USAGE_SNAPSHOT)
   const wholeLog = useProjection('tokenUsage')
   const pressure = useProjection('contextPressure')
+  const breakdown = useProjection('contextBreakdown')
   const stats = useProjection('sessionStats')
   const historyLoading = useSession(s => s.openState === 'loading')
   const olderLoading = useSession(s => s.loadingOlder)
@@ -459,20 +540,74 @@ export function TokenUsageView({
   const [copied, setCopied] = useState(false)
 
   const models = useMemo(() => {
-    const byLabel = new Map<string, { label: string; billed: number; calls: number }>()
+    const byLabel = new Map<string, {
+      label: string
+      billed: number
+      calls: number
+      cacheRead: number
+      inputTotal: number
+    }>()
     for (const node of snapshot.steps) {
       const data = node.data
       const label = data.provider === undefined || data.model === undefined
         ? 'unknown'
         : `${data.provider}/${data.model}`
       const previous = byLabel.get(label)
+      const usage = data.usage
       byLabel.set(label, {
         label,
-        billed: (previous?.billed ?? 0) + billedOf(data.usage),
+        billed: (previous?.billed ?? 0) + billedOf(usage),
         calls: (previous?.calls ?? 0) + 1,
+        cacheRead: (previous?.cacheRead ?? 0) + usage.cacheReadTokens,
+        inputTotal: (previous?.inputTotal ?? 0) + usage.cacheReadTokens + usage.cacheWriteTokens + usage.inputTokens,
       })
     }
-    return [...byLabel.values()].sort((left, right) => right.billed - left.billed)
+    return [...byLabel.values()]
+      .map(row => ({
+        label: row.label,
+        billed: row.billed,
+        calls: row.calls,
+        hitRate: row.inputTotal <= 0 ? undefined : (row.cacheRead / row.inputTotal) * 100,
+      }))
+      .sort((left, right) => right.billed - left.billed)
+  }, [snapshot])
+
+  // Whole-window call statistics over the folded usage-bearing steps.
+  const callStats = useMemo(() => {
+    let billedSum = 0
+    let peak = 0
+    for (const node of snapshot.steps) {
+      const value = billedOf(node.data.usage)
+      billedSum += value
+      if (value > peak) peak = value
+    }
+    const count = snapshot.steps.length
+    return {
+      count,
+      average: count === 0 ? undefined : billedSum / count,
+      peak: count === 0 ? undefined : peak,
+    }
+  }, [snapshot])
+
+  // Per-turn wall-clock spans over step timestamps (defensive: only when a
+  // turn has 2+ distinct finite timestamps).
+  const turnDurationMs = useMemo(() => {
+    const byTurn = new Map<number, number[]>()
+    for (const node of snapshot.steps) {
+      const time = node.data.time
+      if (!Number.isFinite(time) || time <= 0) continue
+      const list = byTurn.get(node.data.turn)
+      if (list === undefined) byTurn.set(node.data.turn, [time])
+      else list.push(time)
+    }
+    const out = new Map<number, number>()
+    for (const [turn, times] of byTurn) {
+      if (times.length < 2) continue
+      const min = Math.min(...times)
+      const max = Math.max(...times)
+      if (max > min) out.set(turn, max - min)
+    }
+    return out
   }, [snapshot])
 
   const totals = wholeLog === undefined
@@ -487,6 +622,10 @@ export function TokenUsageView({
   const billed = billedOf(totals)
   const total = totalOf(totals)
   const hasAny = wholeLog !== undefined || snapshot.steps.length > 0
+  const hitRate = cacheHitRateOf(totals)
+  const reasoningShare = totals.outputTokens <= 0
+    ? undefined
+    : (totals.reasoningTokens / totals.outputTokens) * 100
 
   const rawPercent = pressure?.projectedTokens !== undefined && pressure.contextWindow !== undefined
     && pressure.contextWindow > 0
@@ -546,10 +685,35 @@ export function TokenUsageView({
 
           <div className={styles.kpis}>
             <OccupancyKpi percent={rawPercent} detail={occupancyDetail} warn={warn} t={t} />
+            <KpiCard
+              label={t('kpi.cacheHitRate')}
+              value={hitRate === undefined ? t('kpi.unknown') : `${hitRate.toFixed(1)}%`}
+              sub={t('kpi.cacheHitRateSub')}
+              kind="cache"
+              t={t}
+            />
+            <KpiCard
+              label={t('kpi.reasoningShare')}
+              value={reasoningShare === undefined ? t('kpi.unknown') : `${reasoningShare.toFixed(1)}%`}
+              sub={t('kpi.reasoningShareSub')}
+              t={t}
+            />
+          </div>
+
+          <div className={styles.kpis}>
+            <KpiCard label={t('kpi.avgCall')} value={callStats.average === undefined ? '—' : Math.round(callStats.average)} sub={t('kpi.avgCallSub')} t={t} />
+            <KpiCard label={t('kpi.peakCall')} value={callStats.peak === undefined ? '—' : callStats.peak} sub={t('kpi.peakCallSub')} kind="output" t={t} />
             <KpiCard label={t('kpi.turns')} value={stats === undefined ? '—' : stats.turns} t={t} />
             <KpiCard label={t('kpi.steps')} value={stats === undefined ? '—' : stats.steps} t={t} />
-            <KpiCard label={t('kpi.reasoning')} value={totals.reasoningTokens} t={t} />
           </div>
+
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              {t('composition.title')}
+              <span className={styles.sectionNote}>{t('composition.note')}</span>
+            </h3>
+            <ContextCompositionBar breakdown={breakdown} t={t} />
+          </section>
 
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>
@@ -633,12 +797,13 @@ export function TokenUsageView({
                       <th className={styles.num}>Cache W</th>
                       <th className={styles.num}>Output</th>
                       <th className={styles.num}>Reasoning</th>
+                      <th>{t('turns.duration')}</th>
                       <th>{t('models.name')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {snapshot.turns.map(turn => (
-                      <TurnRow key={turn.turn} turn={turn} t={t} />
+                      <TurnRow key={turn.turn} turn={turn} durationMs={turnDurationMs.get(turn.turn)} t={t} />
                     ))}
                   </tbody>
                 </table>
@@ -662,6 +827,7 @@ export function TokenUsageView({
                     <th>{t('models.name')}</th>
                     <th className={styles.num}>{t('models.tokens')}</th>
                     <th className={styles.num}>{t('models.calls')}</th>
+                    <th className={styles.num}>{t('models.cacheHit')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -670,6 +836,9 @@ export function TokenUsageView({
                       <td>{model.label === 'unknown' ? t('turns.unknownModel') : model.label}</td>
                       <td className={styles.num}>{formatTokens(model.billed)}</td>
                       <td className={styles.num}>{model.calls}</td>
+                      <td className={styles.num}>
+                        {model.hitRate === undefined ? '—' : `${model.hitRate.toFixed(1)}%`}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -683,9 +852,10 @@ export function TokenUsageView({
 }
 
 function TurnRow({
-  turn, t,
+  turn, durationMs, t,
 }: {
   readonly turn: TokenUsageTurnRow
+  readonly durationMs: number | undefined
   readonly t: PropsLocale<'token-usage'>['t']
 }) {
   const segments = segmentsOf(turn.usage)
@@ -701,6 +871,7 @@ function TurnRow({
       <td className={styles.num}>{formatTokens(turn.usage.cacheWriteTokens)}</td>
       <td className={styles.num}>{formatTokens(turn.usage.outputTokens)}</td>
       <td className={styles.num}>{formatTokens(turn.usage.reasoningTokens)}</td>
+      <td className={styles.num}>{formatDuration(durationMs ?? 0)}</td>
       <td>
         <div className={styles.bar} title={models}>
           {segments.map(segment => (
