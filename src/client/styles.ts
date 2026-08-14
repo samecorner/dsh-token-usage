@@ -309,7 +309,7 @@ export function injectTokenUsageStyles(): () => void {
   let tag = document.querySelector<HTMLStyleElement>(`style[data-plugin-css="${TAG_ID}"]`)
   if (tag === null) {
     tag = document.createElement('style')
-    tag.dataset.plugin = '@deepseek-ai/dsh-client-ui-token-usage'
+    tag.dataset.plugin = '@samecorner/dsh-client-ui-token-usage'
     tag.dataset.pluginCss = TAG_ID
     tag.textContent = CSS
     document.head.appendChild(tag)

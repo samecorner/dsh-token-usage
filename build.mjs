@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = dirname(fileURLToPath(import.meta.url))
-const ID = '@deepseek-ai/dsh-client-ui-token-usage'
+const ID = '@samecorner/dsh-client-ui-token-usage'
 
 // 与 DSH 的 tsdown.client.ts 一致的平台模块表（浏览器端 loader 的 module table）。
 const PLATFORM_MODULES = [

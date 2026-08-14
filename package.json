@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-token-usage",
+  "name": "@samecorner/dsh-client-ui-token-usage",
   "description": "Token usage analytics tab for the dsh web GUI: whole-log projections plus a per-turn/per-step breakdown",
   "version": "0.1.0",
   "license": "MIT",
@@ -29,9 +29,30 @@
     "lib/client.js",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samecorner/dsh-token-usage.git"
+  },
+  "homepage": "https://github.com/samecorner/dsh-token-usage",
+  "bugs": {
+    "url": "https://github.com/samecorner/dsh-token-usage/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "token-usage",
+    "web-ui"
+  ],
   "scripts": {
     "build": "node build.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run build",
+    "test": "node scripts/smoke-loader.mjs && node scripts/render-test.mjs && node scripts/.tmp/render-test.bundle.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",

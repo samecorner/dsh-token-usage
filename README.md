@@ -13,23 +13,36 @@ DSH（DeepSeek Harness）Web GUI 的 **Token 用量分析插件**：在会话顶
 | 按模型拆分 + 逐轮明细 + 堆叠条形图 | 客户端从会话事件窗口折叠 assistant/message 的 usage（ConversationNode + View target） |
 | 复制 Markdown 报告 / 加载更早记录 | 面板按钮 |
 
-## 安装（到本机 npx 起的 dsh web）
+## 安装
+
+### 方式 A：npm 安装（推荐，免编译）
+
+```bash
+# 1. profile package.json 加依赖并安装（在 ~/.dsh/profiles/web/ 下）
+pnpm add @samecorner/dsh-client-ui-token-usage
+
+# 2. 在 ~/.dsh/profiles/web/cordis.patch.yml 追加：
+#    - insert:
+#        - id: ui-token-usage
+#          name: '@samecorner/dsh-client-ui-token-usage'
+
+# 3. 重启 dsh web
+```
+
+更新版本：`pnpm add @samecorner/dsh-client-ui-token-usage@latest`（或改 `package.json` 里的版本号再 `pnpm install`）。
+
+### 方式 B：源码构建 + 本地安装（开发用）
 
 ```bash
 # 1. 构建（需要 node >= 18；依赖只来自 npm 公开包，不需要 DSH 源码）
 npm install
 npm run build        # 产出 lib/client.js + lib/index.js
 
-# 2. 挂进运行中 GUI 的插件解析面（$DSH_HOME/profiles/node_modules）
-mkdir -p ~/.dsh/profiles/node_modules/@deepseek-ai
-ln -sfn "$(pwd)" ~/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-token-usage
+# 2. 以 file: 依赖挂进 profile package.json（或 symlink 到 profile node_modules）
+#    "dependencies": { "@samecorner/dsh-client-ui-token-usage": "file:/path/to/dsh-token-usage" }
+#    然后 pnpm install（file: 是拷贝语义 — 改代码后需重新 build 并同步，见开发手册 §8）
 
-# 3. 在 ~/.dsh/profiles/web/cordis.patch.yml 追加：
-#    - insert:
-#        - id: ui-token-usage
-#          name: '@deepseek-ai/dsh-client-ui-token-usage'
-
-# 4. 重启 dsh web（launcher 停止再启动，或 kill 后重跑 dsh web）
+# 3. 同上 cordis.patch.yml；4. 重启 dsh web
 ```
 
 重启后打开任意会话，顶部 Tab 出现「Token 用量」。
@@ -67,10 +80,11 @@ dsh-token-usage/
 
 ## GitHub 仓库注意事项
 
-- 包名目前是 @deepseek-ai/dsh-client-ui-token-usage，便于零配置加载；若不想用官方 scope，
-  改名即可（package.json name + build.mjs 里的 ID + 安装目录），Loader 不挑 scope。
+- 包名 `@samecorner/dsh-client-ui-token-usage`；Loader 不挑 scope，若 fork 改名需同步
+  package.json name + build.mjs 里的 ID + styles.ts 的 data-plugin 归属标记。
 - 依赖只有 devDependencies（类型 + 构建工具），运行时零依赖（只 external 平台模块）。
 - 版本号建议发版时改成与目标 DSH release 线一致的 rc 版本。
+- 发布：`npm run test && npm publish`（prepack 会自动构建 lib/）。
 
 ## 工作原理（DSH 插件机制速记）
 
